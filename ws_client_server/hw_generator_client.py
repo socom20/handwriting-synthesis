@@ -40,7 +40,7 @@ class HWGeneatorClient():
     def __init__(self,
                  generation_dir='../gpt_generations',
                  host='localhost',
-                 port=8002,
+                 port=7010,
                  password='gpt_model'):
         
         self.generation_dir = generation_dir
