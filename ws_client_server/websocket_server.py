@@ -18,7 +18,7 @@ import traceback
 
 
 clients = []
-class Gender_predictor(WebSocket):
+class HW_generator(WebSocket):
 
     def __init__(self, *args_v, **args_d):
         global model
@@ -30,8 +30,6 @@ class Gender_predictor(WebSocket):
     def predict(self, data):
         
         pred_args_d = pickle.loads(data)
-
-        # e.i.: pred_args_d={'raw_text'='Mi querido hijo, no sabes la alegría que me dió leer tu carta', 'nsamples'=1, 'input_lang'='es', 'output_lang'='es', 'gender_dir'='male'}
 
         resp_d = dict(pred_args_d)
 
@@ -241,7 +239,7 @@ if __name__ == "__main__":
     print('Ok!!!')
 
     
-    server = ws_server(ws_class=Gender_predictor,
+    server = ws_server(ws_class=HW_generator,
                        host=options.host,
                        port=options.port,
                        password=options.password,

@@ -3,6 +3,7 @@ import os, sys
 import pickle
 import traceback
 import time
+import glob
 
 from websocket_client import ws_client
 
@@ -18,7 +19,7 @@ def on_message(ws, message):
             pred_d = pickle.loads(message)
 
             textfile = pred_d['textfile']
-            cncfile  = os.path.splitext(textfile)[0] + '.cnc'
+            cncfile  = os.path.splitext(textfile)[0] + '.pickle'
 
             with open(cncfile, 'wb') as f:
                 f.write(message)
@@ -39,11 +40,13 @@ def on_message(ws, message):
 class HWGeneatorClient():
     def __init__(self,
                  generation_dir='../gpt_generations',
+                 txt_ext='txt',
                  host='localhost',
                  port=7010,
-                 password='gpt_model'):
+                 password='gpt_model',):
         
         self.generation_dir = generation_dir
+        self.txt_ext = txt_ext
         
         self.host = host
         self.port = port
@@ -88,7 +91,7 @@ class HWGeneatorClient():
         
         return None
 
-    def generate(self, textfile='../text_samples/003.txt', max_line_hight=None, max_shars_in_line=None, p_start=np.array([0.0, 0.0]), new_line_prop=1.03):
+    def generate(self, textfile='../text_samples/003.txt', max_line_hight=None, max_shars_in_line=None, p_start=np.array([0.0, 0.0]), new_line_prop=1.03, verbose=False):
         
         self.connect()
         
@@ -108,7 +111,8 @@ class HWGeneatorClient():
             data_bytes = pickle.dumps(data_d)
             self.client.send( data_bytes )
 
-            print(' Message sent, wait for response ...')
+            if verbose:
+                print(' Message sent, wait for response ...')
         else:
             raise Exception(' - ERROR, the client is not connected ...')
 
@@ -116,19 +120,47 @@ class HWGeneatorClient():
         return None
         
 
-    
+    def generate_all_hw_files(self, max_line_hight=None, max_shars_in_line=None, p_start=np.array([0.0, 0.0]), new_line_prop=1.03):
+
+        files_v = glob.glob(os.path.join(self.generation_dir,'*/*.{}'.format(self.txt_ext)))
+
+        print(' - Found {} files.'.format(len(files_v)))
+        for file in files_v:
+            hw_file = os.path.splitext(file)[0] + '.pickle'
+            if os.path.exists(hw_file):
+                print(' - Omitting existing file: {} '.format(hw_file))
+                continue
+
+
+            print(' - Generating file: {} '.format(hw_file))
+            self.generate(
+                textfile=file,
+                max_line_hight=max_line_hight,
+                max_shars_in_line=max_shars_in_line,
+                p_start=p_start,
+                new_line_prop=new_line_prop,
+                verbose=False)
+        
+
+        return None
 
             
 if __name__ == '__main__':
     
-    hw_generator_client = HWGeneatorClient()
+    hw_generator_client = HWGeneatorClient(
+        host='34.69.155.197',
+        port=7010,
+        generation_dir='../../../../gpt2_text_generator/gpt_generations')
     
-    hw_generator_client.generate(
-        textfile='../text_samples/003.txt',
-        max_line_hight=None,
-        max_shars_in_line=None,
-        p_start=np.array([0.0, 0.0]),
-        new_line_prop=1.03)
+##    hw_generator_client.generate(
+##        textfile='../text_samples/003.txt',
+##        max_line_hight=None,
+##        max_shars_in_line=None,
+##        p_start=np.array([0.0, 0.0]),
+##        new_line_prop=1.03)
+
+
+    hw_generator_client.generate_all_hw_files()
 
 
 
