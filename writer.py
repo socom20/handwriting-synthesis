@@ -2,7 +2,6 @@ import os, sys
 import logging
 
 import numpy as np
-import svgwrite
 
 import drawing
 from rnn import rnn
