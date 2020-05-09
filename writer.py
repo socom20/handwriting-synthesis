@@ -389,7 +389,6 @@ if __name__ == '__main__':
 ##    
 ##    hw.plot_cnc_strokes(cnc_strokes_1l)
 
-    sys.exit()
     text = """Hijo mío, estás lejos y aquí, a mi costado un compañero tuyo ocupa tu lugar. Nada, nada ha cambiado nada de lo que amamos.
             Este amigo ilumina de esperanza tu ausencia otro, por ti, sin duda, se equivoca. Y aquel joven se bebe toda la primavera en una sola copa, en una boca.
             No necesito ya quererte o encontrarte darte los buenos días. Te tropiezo en la calle, marchas a la par mía y acaso me acompañas como nunca lo hacías.

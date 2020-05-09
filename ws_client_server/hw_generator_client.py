@@ -187,7 +187,7 @@ if __name__ == '__main__':
 ##        new_line_prop=1.03)
 
 
-    hw_generator_client.generate_all_hw_files(style=1,
+    hw_generator_client.generate_all_hw_files(style=0,
                                               max_line_hight=10,
                                               max_line_width=None,
                                               max_chars_in_line=None)
