@@ -9,13 +9,58 @@ from rnn import rnn
 import matplotlib.pyplot as plt
 
 import pickle
+import string
+
+
+def plot_cnc_strokes(cnc_strokes, plot_e=False, save_file=None, do_show=True):
+
+    plt.close()
+    f, ax = plt.subplots(1, figsize=(10,10))
+    
+    y_0 = 0.0
+    for p_m, e_v in cnc_strokes:
+        i_s = 0
+        
+        for i_e in np.argwhere(e_v).T[0]:
+            ax.plot(p_m[i_s:i_e,0], y_0 + p_m[i_s:i_e,1], 'r')
+            i_s = i_e
+        
+        ax.plot(p_m[i_s:,0], y_0 + p_m[i_s:,1], 'r')
+
+        if plot_e:
+            for i_e in np.argwhere(e_v).T[0]:
+                ax.plot(p_m[i_e-1:i_e+1,0], y_0 + p_m[i_e-1:i_e+1,1], 'b')
+                
+        y_0 -= 1.03*np.abs(p_m[:,1].max() - p_m[:,1].min())
+
+    if save_file is not None:
+        f.savefig(save_file)
+        print(' Saved HW figure at: "{}"'.format(save_file))
+
+    if do_show:
+        plt.show()
+
+    return None
+
 
 class Writer(object):
 
-    def __init__(self, checkpoint_dir='./checkpoints', bias=0.75, styles_dir='../styles', style=None, verbose=False):
+    def __init__(self,
+                 checkpoint_dir='./checkpoints',
+                 bias=0.75, styles_dir='./styles',
+                 default_style=None,
+
+                 chars_from='áéíóúñÁÉÍÓÚÑ\t',
+                 chars_to='aeiounAEIOUN ',
+                 chars_erase='\r',
+                 
+                 verbose=False):
+        
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-        self.style          = style
+        self.default_style  = default_style
+        
+        self.style          = default_style
         self.styles_dir     = styles_dir
         self.bias           = bias
         self.checkpoint_dir = checkpoint_dir
@@ -48,6 +93,9 @@ class Writer(object):
             attention_mixture_components=10
         )
         self.nn.restore()
+
+        self._update_char_trans_d(chars_from=chars_from, chars_to=chars_to, chars_erase=chars_erase)
+        
         return None
     
 
@@ -89,7 +137,7 @@ class Writer(object):
         if self.style is not None:
             for i, cs in enumerate(lines_v):
                 x_p = np.load(os.path.join(self.styles_dir, 'style-{}-strokes.npy'.format(self.style)))
-                c_p = np.load(os.path.join(self.styles_dir, 'style-{}-chars.npy'.format(self.style)).tostring().decode('utf-8'))
+                c_p = np.load(os.path.join(self.styles_dir, 'style-{}-chars.npy'.format(self.style))).tostring().decode('utf-8')
 
                 c_p = str(c_p) + " " + cs
                 c_p = drawing.encode_ascii(c_p)
@@ -205,7 +253,8 @@ class Writer(object):
                          cnc_strokes,
                          p_start=np.array([0.0, 0.0]),
                          new_line_prop=1.03,
-                         max_line_hight=None):
+                         max_line_hight=None,
+                         max_line_width=None):
         
         p_start = np.copy(p_start)
 
@@ -219,9 +268,16 @@ class Writer(object):
         to_cat_p_m = []
         to_cat_e_v = []
         for i_s, (p_m, e_v) in enumerate(cnc_strokes):
-            p_m = high_norm*p_m
+            p_m = high_norm * p_m
             e_v[0] = 1.0
-            
+
+            if max_line_width is not None:
+                line_w = np.abs(p_m[:,0].max() - p_m[:,0].min())
+                if line_w > max_line_width:
+                    w_factor = max_line_width / line_w
+                    p_m[:,0] = w_factor * p_m[:,0]
+                    
+                
             if i_s == 0:
                 to_cat_p_m.append( np.copy(p_start[np.newaxis,:]) )
                 to_cat_e_v.append( np.array([0.0]) )
@@ -241,46 +297,49 @@ class Writer(object):
         return [(p_m, e_v)]
 
     
+    def plot_cnc_strokes(self, cnc_strokes, plot_e=False, save_file=None):
+        return plot_cnc_strokes(cnc_strokes=cnc_strokes, plot_e=plot_e, save_file=save_file)
 
-    def plot_cnc_strokes(self, cnc_strokes, plot_e=False):
-        y_0 = 0.0
-        for p_m, e_v in cnc_strokes:
-            i_s = 0
-            
-            for i_e in np.argwhere(e_v).T[0]:
-                plt.plot(p_m[i_s:i_e,0], y_0 + p_m[i_s:i_e,1], 'r')
-                i_s = i_e
-            
-            plt.plot(p_m[i_s:,0], y_0 + p_m[i_s:,1], 'r')
 
-            if plot_e:
-                for i_e in np.argwhere(e_v).T[0]:
-                    plt.plot(p_m[i_e-1:i_e+1,0], y_0 + p_m[i_e-1:i_e+1,1], 'b')
-                    
-            y_0 -= 1.03*np.abs(p_m[:,1].max() - p_m[:,1].min())
-            
-        plt.show()
+    def _update_char_trans_d(self, chars_from='áéíóúñÁÉÍÓÚÑ\t', chars_to='aeiounAEIOUN ', chars_erase='\r'):
 
-        return None
+        for C, c in zip(string.ascii_lowercase, string.ascii_uppercase):
+            if C not in self.valid_char_set and c in self.valid_char_set:
+                if C not in chars_from:
+                    chars_from += C
+                    chars_to += c
 
+            if C in self.valid_char_set and c not in self.valid_char_set:
+                if c not in chars_from:
+                    chars_from += c
+                    chars_to += C
+
+        self.trans_d = str.maketrans(chars_from, chars_to, chars_erase)
+        return self.trans_d
+        
     
     def gen_cnc_strokes_form_text(self,
                                   text,
+                                  style=None,
                                   max_line_hight=None,
-                                  max_shars_in_line=None,
+                                  max_line_width=None,
+                                  max_chars_in_line=None,
                                   p_start=np.array([0.0, 0.0]),
                                   new_line_prop=1.03,
                                   do_plot=False):
 
-        if max_shars_in_line is None:
-            max_shars_in_line = drawing.MAX_CHAR_LEN
+        if style is None:
+            self.style = self.default_style
         else:
-            max_shars_in_line = min(drawing.MAX_CHAR_LEN, max_shars_in_line)
+            self.style = style
             
-           
+        if max_chars_in_line is None:
+            max_chars_in_line = drawing.MAX_CHAR_LEN
+        else:
+            max_chars_in_line = min(drawing.MAX_CHAR_LEN, max_chars_in_line)
+
         
-        trans_d = str.maketrans('áéíóúñÁÉÍÓÚÑ\t', 'aeiounAEIOUN ', '\r')
-        text = text.translate(trans_d)
+        text = text.translate(self.trans_d)
         split_lines_v = text.split('\n')
 
         lines_v = []
@@ -291,7 +350,7 @@ class Writer(object):
             
             lines_v.append('')
             for word in line.split():
-                if len(lines_v[-1]) + len(word) + 1 < drawing.MAX_CHAR_LEN:
+                if len(lines_v[-1]) + len(word) + 1 < max_chars_in_line:
                     if lines_v[-1] != '':
                         lines_v[-1] += ' '
                     lines_v[-1] += word
@@ -306,7 +365,8 @@ class Writer(object):
         cnc_stroke = self.join_cnc_strokes(cnc_strokes,
                                            p_start=p_start,
                                            new_line_prop=new_line_prop,
-                                           max_line_hight=max_line_hight)
+                                           max_line_hight=max_line_hight,
+                                           max_line_width=max_line_width)
 
         if do_plot:
             self.plot_cnc_strokes(cnc_stroke,
@@ -316,7 +376,7 @@ class Writer(object):
 
     
 if __name__ == '__main__':
-    hw = Writer(bias=5, style=9)
+    hw = Writer(bias=5)
     
 ##    # usag demo
 ##    lines_v = [
@@ -329,6 +389,7 @@ if __name__ == '__main__':
 ##    
 ##    hw.plot_cnc_strokes(cnc_strokes_1l)
 
+    sys.exit()
     text = """Hijo mío, estás lejos y aquí, a mi costado un compañero tuyo ocupa tu lugar. Nada, nada ha cambiado nada de lo que amamos.
             Este amigo ilumina de esperanza tu ausencia otro, por ti, sin duda, se equivoca. Y aquel joven se bebe toda la primavera en una sola copa, en una boca.
             No necesito ya quererte o encontrarte darte los buenos días. Te tropiezo en la calle, marchas a la par mía y acaso me acompañas como nunca lo hacías.
@@ -342,7 +403,7 @@ if __name__ == '__main__':
             Ya no serás la noche, nunca serás la noche. Yo soy todas las madres y eres todos los hijos. Al amarlos a todos te amo más a ti mismo…
             Ya nunca estarás solo, multiplicado estás por legiones de jóvenes de cuatro latitudes… para siempre jamás."""
         
-    cnc_text = hw.gen_cnc_strokes_form_text(text, max_line_hight=10, max_shars_in_line=None, do_plot=True)
+    cnc_text = hw.gen_cnc_strokes_form_text(text, style=None, max_line_hight=10, max_line_width=None, max_chars_in_line=None, do_plot=True)
 
     cnc_text_bin = pickle.dumps(cnc_text)
 

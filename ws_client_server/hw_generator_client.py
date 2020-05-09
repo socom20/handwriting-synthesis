@@ -7,6 +7,8 @@ import glob
 
 from websocket_client import ws_client
 
+sys.path.append('../')
+from writer import plot_cnc_strokes
 
 
 def on_message(ws, message):
@@ -20,11 +22,17 @@ def on_message(ws, message):
 
             textfile = pred_d['textfile']
             cncfile  = os.path.splitext(textfile)[0] + '.pickle'
+            figfile  = os.path.splitext(textfile)[0] + '.png'
 
             with open(cncfile, 'wb') as f:
                 f.write(message)
-
-            print(' Saved CNC path at:', cncfile)
+                print(' Saved CNC path at:', cncfile)
+                
+            message_d = pickle.loads(message)
+            plot_cnc_strokes([message_d['cnc_generation']],
+                             plot_e=False,
+                             save_file=figfile,
+                             do_show=False)
                 
         else:
             print('on_message: type={} msg={}'.format(type(message), message))
@@ -91,7 +99,15 @@ class HWGeneatorClient():
         
         return None
 
-    def generate(self, textfile='../text_samples/003.txt', max_line_hight=None, max_shars_in_line=None, p_start=np.array([0.0, 0.0]), new_line_prop=1.03, verbose=False):
+    def generate(self,
+                 textfile='../text_samples/003.txt',
+                 style=None,
+                 max_line_hight=None,
+                 max_line_width=None,
+                 max_chars_in_line=None,
+                 p_start=np.array([0.0, 0.0]),
+                 new_line_prop=1.03,
+                 verbose=False):
         
         self.connect()
         
@@ -102,9 +118,11 @@ class HWGeneatorClient():
                 
             data_d = {
                 'text':text,
+                'style':style,
                 'textfile':textfile,
                 'max_line_hight':max_line_hight,
-                'max_shars_in_line':max_shars_in_line,
+                'max_line_width':max_line_width,
+                'max_chars_in_line':max_chars_in_line,
                 'p_start':p_start,
                 'new_line_prop':new_line_prop}
 
@@ -120,7 +138,13 @@ class HWGeneatorClient():
         return None
         
 
-    def generate_all_hw_files(self, max_line_hight=None, max_shars_in_line=None, p_start=np.array([0.0, 0.0]), new_line_prop=1.03):
+    def generate_all_hw_files(self,
+                              style=None,
+                              max_line_hight=None,
+                              max_line_width=None,
+                              max_chars_in_line=None,
+                              p_start=np.array([0.0, 0.0]),
+                              new_line_prop=1.03):
 
         files_v = glob.glob(os.path.join(self.generation_dir,'*/*.{}'.format(self.txt_ext)))
 
@@ -128,15 +152,17 @@ class HWGeneatorClient():
         for file in files_v:
             hw_file = os.path.splitext(file)[0] + '.pickle'
             if os.path.exists(hw_file):
-                print(' - Omitting existing file: {} '.format(hw_file))
+                print(' - Omitting existing file: "{}"'.format(hw_file))
                 continue
 
 
             print(' - Generating file: {} '.format(hw_file))
             self.generate(
                 textfile=file,
+                style=style,
                 max_line_hight=max_line_hight,
-                max_shars_in_line=max_shars_in_line,
+                max_line_width=max_line_width,
+                max_chars_in_line=max_chars_in_line,
                 p_start=p_start,
                 new_line_prop=new_line_prop,
                 verbose=False)
@@ -148,19 +174,23 @@ class HWGeneatorClient():
 if __name__ == '__main__':
     
     hw_generator_client = HWGeneatorClient(
-        host='34.69.155.197',
+        host='localhost',
         port=7010,
-        generation_dir='../../../../gpt2_text_generator/gpt_generations')
+        generation_dir='../../../../gpt_generations')
     
 ##    hw_generator_client.generate(
 ##        textfile='../text_samples/003.txt',
 ##        max_line_hight=None,
-##        max_shars_in_line=None,
+##        max_line_width=None,
+##        max_chars_in_line=None,
 ##        p_start=np.array([0.0, 0.0]),
 ##        new_line_prop=1.03)
 
 
-    hw_generator_client.generate_all_hw_files()
+    hw_generator_client.generate_all_hw_files(style=1,
+                                              max_line_hight=10,
+                                              max_line_width=None,
+                                              max_chars_in_line=None)
 
 
 

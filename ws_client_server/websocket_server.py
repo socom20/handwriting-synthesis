@@ -34,6 +34,7 @@ class HW_generator(WebSocket):
         resp_d = dict(pred_args_d)
 
         del(pred_args_d['textfile'])
+        pred_args_d['do_plot'] = False
 
         print(' Generating HW samples ...')
         cnc_generation = self.model.gen_cnc_strokes_form_text(**pred_args_d)
@@ -219,9 +220,9 @@ if __name__ == "__main__":
     parser.add_option("--key", default='./key.pem', type='string', action="store", dest="key", help="key (./key.pem)")
     
     parser.add_option("--checkpoint-dir", default='../checkpoints', type='string', action="store", dest="checkpoint_dir", help="The folder where the checkpoints are.")
-    parser.add_option("--bias", default=0.75, type='float', action="store", dest="bias", help="Bias parameter for the generation.")
-    parser.add_option("--styles_-dir", default='../styles', type='string', action="store", dest="styles_dir", help="The folder where the styles are.")
-    parser.add_option("--style", default=None, type='int', action="store", dest="style", help="A number indicating the type of the generated text.")
+    parser.add_option("--bias", default=5, type='float', action="store", dest="bias", help="Bias parameter for the generation.")
+    parser.add_option("--styles-dir", default='../styles', type='string', action="store", dest="styles_dir", help="The folder where the styles are.")
+    parser.add_option("--default_style", default=9, type='int', action="store", dest="default_style", help="A number indicating the type of the generated text.")
     
 ##    (options, args) = parser.parse_args(['--password', 'gpt_model'])
     (options, args) = parser.parse_args()
@@ -233,7 +234,7 @@ if __name__ == "__main__":
             checkpoint_dir=options.checkpoint_dir,
             bias=options.bias,
             styles_dir=options.styles_dir,
-            style=options.style,
+            default_style=options.default_style,
             verbose=True)
 
     print('Ok!!!')
